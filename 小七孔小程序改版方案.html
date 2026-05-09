@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>小七孔小程序改版方案</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;background:#f8f9fc;color:#1a1a2e;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+    :root{
+      --green-1:#16a34a;
+      --green-2:#22c55e;
+      --emerald-1:#059669;
+      --emerald-2:#10b981;
+      --teal-1:#0d9488;
+      --teal-2:#14b8a6;
+      --green-soft:#bbf7d0;
+      --green-deep:#064e3b;
+    }
+
+    /* ---- Hero ---- */
+    .hero{
+      background:var(--green-deep);
+      color:#fff;
+      padding:48px 24px 40px;
+      text-align:center;
+      position:relative;
+      overflow:hidden
+    }
+    /* 顶部背景图透明度：60% */
+    .hero::before{
+      content:'';
+      position:absolute;
+      inset:0;
+      background:url('assets/hero-bg.png') center/cover no-repeat;
+      opacity:0.6;
+      pointer-events:none;
+      z-index:0;
+    }
+    /* 绿色蒙层 + 细微光斑 */
+    .hero::after{
+      content:'';
+      position:absolute;
+      inset:0;
+      background:
+        linear-gradient(135deg,rgba(6,78,59,0.72) 0%,rgba(5,150,105,0.58) 50%,rgba(6,78,59,0.72) 100%),
+        radial-gradient(circle at 30% 50%,rgba(34,197,94,0.12) 0%,transparent 50%),
+        radial-gradient(circle at 70% 50%,rgba(20,184,166,0.10) 0%,transparent 50%);
+      pointer-events:none;
+      z-index:1;
+    }
+    .hero *{position:relative;z-index:2}
+    .hero h1{font-size:28px;font-weight:800;letter-spacing:1px;margin-bottom:8px;text-shadow:0 10px 30px rgba(0,0,0,0.45),0 2px 8px rgba(0,0,0,0.35)}
+    .hero .sub{font-size:15px;color:rgba(255,255,255,0.92);margin-bottom:16px;text-shadow:0 8px 22px rgba(0,0,0,0.35),0 2px 6px rgba(0,0,0,0.25)}
+    .brand-row{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+    .brand-tag{padding:5px 16px;border-radius:20px;font-size:13px;font-weight:700;text-shadow:0 6px 16px rgba(0,0,0,0.25)}
+    .brand-hxx{background:rgba(34,197,94,0.22);border:1px solid rgba(34,197,94,0.5);color:var(--green-soft)}
+    .brand-gd{background:rgba(20,184,166,0.20);border:1px solid rgba(20,184,166,0.5);color:#99f6e4}
+    .brand-x{font-size:16px;color:rgba(255,255,255,0.75);font-weight:800;text-shadow:0 8px 22px rgba(0,0,0,0.35)}
+    .hero-stats{display:flex;justify-content:center;gap:32px;margin-top:24px;flex-wrap:wrap}
+    .hero-stat{text-align:center}
+    .hero-stat .val{font-size:28px;font-weight:800;color:var(--green-soft);text-shadow:0 10px 26px rgba(0,0,0,0.35)}
+    .hero-stat .lbl{font-size:11px;color:rgba(255,255,255,0.78);margin-top:2px;text-shadow:0 8px 18px rgba(0,0,0,0.30)}
+
+    /* ---- Container ---- */
+    .container{width:100%;max-width:1500px;margin:0 auto;padding:0 20px 48px}
+
+    /* ---- Demo (GIF) ---- */
+    /* 用 zoom 做等比缩放（会影响布局高度），确保同一行卡片高度与动图一致 */
+    .demo-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.08);zoom:0.5}
+    .demo-head{padding:16px 18px;background:linear-gradient(135deg,var(--green-deep),rgba(5,150,105,0.95));color:#fff}
+    .demo-head .t{font-size:14px;font-weight:700}
+    .demo-head .d{font-size:11px;color:rgba(255,255,255,0.65);margin-top:4px}
+    .demo-body{padding:14px 14px 18px}
+    .demo-gif{width:100%;border-radius:12px;border:1px solid #e5e7eb;display:block}
+    .demo-note{margin-top:10px;font-size:11px;color:#6b7280;line-height:1.6}
+
+    /* ---- Compact rows: smaller right media + shorter left cards (sync height) ---- */
+    .scene.compact .demo-card{zoom:0.42}
+    .scene.compact .card{padding:14px 16px}
+    .scene.compact .card-emoji{font-size:18px}
+    .scene.compact .card-title{font-size:13px}
+    .scene.compact .card-body{font-size:11.5px;line-height:1.6}
+    .scene.compact .uplift{margin-top:10px;padding:6px 10px}
+    .scene.compact .metric-val{font-size:16px}
+    .scene.compact .metric-unit{font-size:9.5px}
+
+    /* ---- Scene Card (reserve right column for demo) ---- */
+    .demo-col{align-self:stretch;display:flex;justify-content:flex-start}
+
+    /* ---- Media toggle (hidden until clicked) ---- */
+    .scene.has-media .demo-col{display:none}
+    .scene.has-media.is-open .demo-col{display:flex}
+
+    .media-toggle{
+      position:absolute;
+      right:-18px;
+      top:50%;
+      transform:translate(50%,-50%);
+      width:34px;
+      height:34px;
+      border-radius:999px;
+      border:1px solid rgba(22,163,74,0.35);
+      background:rgba(240,253,244,0.95);
+      color:#16a34a;
+      padding:0;
+      cursor:pointer;
+      box-shadow:0 6px 18px rgba(0,0,0,0.08);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:3;
+      user-select:none;
+    }
+    .media-toggle:hover{filter:brightness(0.98)}
+    .scene.compact .media-toggle{transform:translate(50%,-50%) scale(0.92)}
+    .media-toggle svg{width:18px;height:18px;display:block}
+
+    /* ---- Phase ---- */
+    .phase{margin-top:36px}
+    .phase-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:0 4px}
+    .phase-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+    .phase-icon.p1{background:linear-gradient(135deg,var(--green-1),var(--green-2));color:#fff}
+    .phase-icon.p2{background:linear-gradient(135deg,var(--emerald-1),var(--emerald-2));color:#fff}
+    .phase-icon.p3{background:linear-gradient(135deg,var(--teal-1),var(--teal-2));color:#fff}
+    .phase-icon.p4{background:linear-gradient(135deg,rgba(34,197,94,0.95),rgba(20,184,166,0.95));color:#fff}
+    .phase-info h2{font-size:18px;font-weight:700}
+    .phase-info .desc{font-size:12px;color:#6b7280}
+
+    /* ---- Scene Card ---- */
+    .scene{display:grid;grid-template-columns:1fr 48px 1fr 420px;column-gap:18px;row-gap:0;margin-bottom:18px;align-items:stretch}
+    .card{border-radius:12px;padding:18px 20px;position:relative;transition:transform 0.15s}
+    .card:hover{transform:translateY(-2px)}
+    .card-old{background:#fff;border:1px solid #fecaca;border-left:4px solid #ef4444}
+    .card-new{background:#fff;border:1px solid #bbf7d0;border-left:4px solid #16a34a}
+
+    @media (max-width: 1200px){
+      .scene{grid-template-columns:1fr 48px 1fr;row-gap:14px}
+      .demo-col{grid-column:1 / -1}
+    }
+
+    .card-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+    .card-emoji{font-size:20px}
+    .card-title{font-size:14px;font-weight:600;flex:1}
+    .card-tag{font-size:10px;padding:2px 10px;border-radius:12px;font-weight:600;white-space:nowrap}
+    .tag-old{background:#fef2f2;color:#dc2626}
+    .tag-new{background:#f0fdf4;color:#16a34a}
+
+    .card-body{font-size:12.5px;color:#4b5563;line-height:1.75}
+    .card-body .hl{color:#1a1a2e;font-weight:600}
+    .card-body .pain{color:#dc2626;font-weight:500}
+    .card-body .gain{color:#059669;font-weight:500}
+    .card-body ul{padding-left:18px;margin-top:6px}
+    .card-body li{margin:6px 0}
+
+    .uplift{margin-top:12px;padding:8px 14px;border-radius:8px;background:linear-gradient(90deg,rgba(34,197,94,0.08),rgba(20,184,166,0.07));border:1px solid rgba(34,197,94,0.18)}
+    .uplift-label{font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+    .uplift-metrics{display:flex;gap:16px;flex-wrap:wrap}
+    .metric{display:flex;align-items:baseline;gap:4px}
+    .metric-val{font-size:18px;font-weight:700;color:var(--emerald-1)}
+    .metric-unit{font-size:10px;color:#6b7280}
+
+    /* ---- VS Connector ---- */
+    .vs-col{display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+    .vs-line{width:2px;flex:1;background:linear-gradient(180deg,#e5e7eb,#d1d5db,#e5e7eb)}
+    .vs-badge{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;z-index:1}
+    .vs-badge.b1{background:linear-gradient(135deg,var(--green-1),var(--green-2))}
+    .vs-badge.b2{background:linear-gradient(135deg,var(--emerald-1),var(--emerald-2))}
+    .vs-badge.b3{background:linear-gradient(135deg,var(--teal-1),var(--teal-2))}
+    .vs-badge.b4{background:linear-gradient(135deg,rgba(34,197,94,0.95),rgba(20,184,166,0.95))}
+
+    /* ---- Summary ---- */
+    .summary{margin-top:40px;border-radius:16px;overflow:hidden;border:2px solid rgba(34,197,94,0.22)}
+    .summary-head{background:linear-gradient(135deg,rgba(6,78,59,0.98),rgba(5,150,105,0.95));color:#fff;padding:20px 24px;text-align:center}
+    .summary-head h2{font-size:18px;font-weight:700;margin-bottom:4px}
+    .summary-head p{font-size:12px;color:rgba(255,255,255,0.6)}
+    .summary-body{display:grid;grid-template-columns:1fr 1fr;background:#fff}
+    .summary-col{padding:24px}
+    .summary-col+.summary-col{border-left:1px solid #f3f4f6}
+    .summary-col h3{font-size:14px;font-weight:700;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid}
+    .summary-col.user h3{color:var(--green-1);border-color:rgba(34,197,94,0.22)}
+    .summary-col.biz h3{color:#0d9488;border-color:rgba(13,148,136,0.2)}
+    .s-item{display:flex;gap:10px;margin-bottom:10px;font-size:12.5px;line-height:1.65;color:#4b5563}
+    .s-dot{flex-shrink:0;width:7px;height:7px;border-radius:50%;margin-top:7px}
+    .s-dot.blue{background:var(--green-1)}
+    .s-dot.teal{background:#0d9488}
+    .s-item b{color:#1a1a2e}
+
+    /* ---- Scale Vision ---- */
+    .scale{margin-top:32px;border-radius:16px;background:#fff;border:1px solid #e5e7eb;padding:24px}
+    .scale h2{font-size:16px;font-weight:700;text-align:center;margin-bottom:20px}
+    .scale-flow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+    .scale-node{padding:10px 18px;border-radius:10px;font-size:12px;font-weight:600;text-align:center;min-width:120px}
+    .sn-1{background:linear-gradient(135deg,rgba(34,197,94,0.16),rgba(34,197,94,0.08));border:1px solid rgba(34,197,94,0.32);color:var(--green-1)}
+    .sn-2{background:linear-gradient(135deg,rgba(20,184,166,0.16),rgba(20,184,166,0.08));border:1px solid rgba(20,184,166,0.32);color:var(--teal-1)}
+    .sn-3{background:linear-gradient(135deg,rgba(5,150,105,0.16),rgba(5,150,105,0.08));border:1px solid rgba(5,150,105,0.32);color:var(--emerald-1)}
+    .sn-4{background:linear-gradient(135deg,rgba(22,163,74,0.14),rgba(13,148,136,0.08));border:1px solid rgba(22,163,74,0.30);color:var(--green-deep)}
+    .scale-arrow{font-size:18px;color:#9ca3af}
+    .scale-sub{font-size:10px;color:#9ca3af;font-weight:400;display:block;margin-top:2px}
+
+    /* ---- Footer ---- */
+    .footer{text-align:center;padding:24px;font-size:11px;color:#9ca3af}
+
+    /* Small helpers */
+    .pill{display:inline-block;font-size:10px;padding:2px 10px;border-radius:999px;background:#ecfdf5;color:#166534;border:1px solid rgba(22,163,74,0.18);margin-left:6px}
+    .k{font-weight:700;color:#1a1a2e}
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <section class="hero">
+    <h1>小七孔小程序改版方案</h1>
+    <div class="sub">以景区智能体贯穿行前-行中-行后，打通数据与交易，让游客体验更顺畅、运营增长更可控。</div>
+    <div class="brand-row">
+      <span class="brand-tag brand-hxx">景区智能体（我方）</span>
+      <span class="brand-x">×</span>
+      <span class="brand-tag brand-gd">票务系统/闸机等（风景公司）</span>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="val">3 min</div>
+        <div class="lbl">行前规划到购票可闭环</div>
+      </div>
+      <div class="hero-stat">
+        <div class="val">2–6 h</div>
+        <div class="lbl">行中伴游活跃时长</div>
+      </div>
+      <div class="hero-stat">
+        <div class="val">数据×交易</div>
+        <div class="lbl">双主线对接</div>
+      </div>
+    </div>
+  </section>
+
+  <main class="container">
+
+    <!-- PHASE 1 -->
+    <section class="phase">
+      <div class="phase-header">
+        <div class="phase-icon p1">1</div>
+        <div class="phase-info">
+          <h2>PHASE 1 · 行前规划（把“决策+购票”从碎片化变成一站式）</h2>
+          <div class="desc">出发前1–3天：信息获取 → 攻略查询 → 门票购买 → 交通准备</div>
+        </div>
+      </div>
+
+      <!-- Scene 01 -->
+      <div class="scene scene-4col">
+        <div class="card card-old">
+          <div class="card-head">
+            <div class="card-emoji">😩</div>
+            <div class="card-title">攻略获取：多App拼凑，信息互相矛盾</div>
+            <span class="card-tag tag-old">传统模式</span>
+          </div>
+          <div class="card-body">
+            小红书搜攻略 → 携程买票 → 地图查路线 → 天气App看天气 → 点评查餐厅。<br/>
+            决策耗时30分钟+，反复跳转，<span class="pain">“信哪个？”</span>成为常态。
+          </div>
+        </div>
+        <div class="vs-col">
+          <div class="vs-line"></div>
+          <div class="vs-badge b1">01</div>
+          <div class="vs-line"></div>
+        </div>
+        <div class="card card-new">
+          <div class="card-head">
+            <div class="card-emoji">🤖</div>
+            <div class="card-title">AI一站式规划：一个对话框完成“规划+购票”</div>
+            <span class="card-tag tag-new">智能体模式</span>
+          </div>
+          <div class="card-body">
+            用户一句话：<span class="hl">“小七孔怎么玩？帮我买门票”</span><br/>
+            智能体输出：入口建议 / 最优路线 / 实况天气 / 游玩时长 / 注意事项，并可直接在<span class="gain">官方小程序内完成购票</span>闭环。
+            <div class="uplift">
+              <div class="uplift-label">体验提升（可作为对外口径）</div>
+              <div class="uplift-metrics">
+                <div class="metric"><span class="metric-val">10×</span><span class="metric-unit">决策效率</span></div>
+                <div class="metric"><span class="metric-val">3min</span><span class="metric-unit">完成规划</span></div>
+                <div class="metric"><span class="metric-val">+45%</span><span class="metric-unit">官方购票率（目标）</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Demo GIF (placed to the right of Scene 01) -->
+        <div class="demo-col">
+          <div class="demo-card">
+            <div class="demo-head">
+              <div class="t">动图演示</div>
+              <div class="d">场景01：行前规划/购票</div>
+            </div>
+            <div class="demo-body">
+              <img class="demo-gif" src="assets/小七孔演示.gif" alt="小七孔小程序动图演示" />
+              <div class="demo-note">如需按“行前/停车/行中导览/交易”分别展示多个动图，可继续追加。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 02 -->
+      <div class="scene">
+        <div class="card card-old">
+          <div class="card-head">
+            <div class="card-emoji">🅿️</div>
+            <div class="card-title">停车盲区：到了才发现没位，第一道噩梦</div>
+            <span class="card-tag tag-old">传统模式</span>
+          </div>
+          <div class="card-body">
+            自驾到门口才发现停车场满位 → 调头找其他停车场 → 山路拥堵30分钟。<br/>
+            旺季停车成为<span class="pain">“入园前就崩溃”</span>的体验拐点。
+          </div>
+        </div>
+        <div class="vs-col">
+          <div class="vs-line"></div>
+          <div class="vs-badge b1">02</div>
+          <div class="vs-line"></div>
+        </div>
+        <div class="card card-new">
+          <div class="card-head">
+            <div class="card-emoji">🚗</div>
+            <div class="card-title">智能停车导引：未到先知，提前锁定最优停车方案</div>
+            <span class="card-tag tag-new">数据驱动</span>
+          </div>
+          <div class="card-body">
+            距景区5km或ETA≤15分钟触发推送：<span class="hl">“东门已满，建议前往西门，剩余128个车位，8分钟到达”</span>。<br/>
+            结合<span class="gain">景区停车数据</span> + <span class="gain">实时路况/ETA</span>，把“找车位”从随机变为确定。
+            <div class="uplift">
+              <div class="uplift-label">对接要点（精简）</div>
+              <div class="uplift-metrics">
+                <div class="metric"><span class="metric-val">车位</span><span class="metric-unit">剩余/总量/阈值</span></div>
+                <div class="metric"><span class="metric-val">ETA</span><span class="metric-unit">到达时间/距离</span></div>
+                <div class="metric"><span class="metric-val">-30min</span><span class="metric-unit">找位时间（目标）</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Demo GIF (placed to the right of Scene 02) -->
+        <div class="demo-col">
+          <div class="demo-card">
+            <div class="demo-head">
+              <div class="t">动图演示</div>
+              <div class="d">场景02：停车盲区/智能停车导引</div>
+            </div>
+            <div class="demo-body">
+              <img class="demo-gif" src="assets/停车盲区演示.gif" alt="停车盲区动图演示" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- PHASE 2 -->
+    <section class="phase">
+      <div class="phase-header">
+        <div class="phase-icon p2">2</div>
+        <div class="phase-info">
+          <h2>PHASE 2 · 行中游览（把“走马观花”变为全程沉浸伴游）</h2>
+          <div class="desc">园内2–6小时：进入景区 → 沉浸游览 → 交通接驳 → 消费闭环</div>
+        </div>
+      </div>
+
+      <!-- Scene 04 -->
+      <div class="scene">
+        <div class="card card-old">
+          <div class="card-head">
+            <div class="card-emoji">😵</div>
+            <div class="card-title">到达即懵：不知道从哪走起，体验起点为负</div>
+            <span class="card-tag tag-old">传统模式</span>
+          </div>
+          <div class="card-body">
+            看导览牌 → 排队问工作人员 → 租讲解器。进入景区第一刻就焦虑，服务无法主动找人。
+          </div>
+        </div>
+        <div class="vs-col">
+          <div class="vs-line"></div>
+          <div class="vs-badge b2">04</div>
+          <div class="vs-line"></div>
+        </div>
+        <div class="card card-new">
+          <div class="card-head">
+            <div class="card-emoji">✨</div>
+            <div class="card-title">30秒Wow：LBS检测入园，主动弹出欢迎与路线</div>
+            <span class="card-tag tag-new">伴游地图</span>
+          </div>
+          <div class="card-body">
+            进入园区自动弹出：<span class="hl">“欢迎到达东门！为你推荐3.5小时东门进→西门出路线（不走回头路）”</span>。<br/>
+            让服务从“被问”变为<span class="gain">“主动迎接”</span>。
+            <div class="uplift">
+              <div class="uplift-label">交付物（节选）</div>
+              <div class="uplift-metrics">
+                <div class="metric"><span class="metric-val">路线</span><span class="metric-unit">多策略推荐</span></div>
+                <div class="metric"><span class="metric-val">POI</span><span class="metric-unit">近场触发卡片</span></div>
+                <div class="metric"><span class="metric-val">30s</span><span class="metric-unit">首次Wow</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image (placed to the right of Scene 04) -->
+        <div class="demo-col">
+          <div class="demo-card">
+            <div class="demo-head">
+              <div class="t">界面示意</div>
+              <div class="d">场景04：30秒Wow（入园欢迎/路线推荐）</div>
+            </div>
+            <div class="demo-body">
+              <img class="demo-gif" src="assets/30秒wow.png" alt="30秒Wow界面示意" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 05 -->
+      <div class="scene compact">
+        <div class="card card-old">
+          <div class="card-head">
+            <div class="card-emoji">📸</div>
+            <div class="card-title">走马观花：拍照即走，不懂故事也不知机位</div>
+            <span class="card-tag tag-old">传统模式</span>
+          </div>
+          <div class="card-body">
+            只知道“来过”，不知道“看了什么”。花了门票却没有获得沉浸体验，传播动力弱。
+          </div>
+        </div>
+        <div class="vs-col">
+          <div class="vs-line"></div>
+          <div class="vs-badge b2">05</div>
+          <div class="vs-line"></div>
+        </div>
+        <div class="card card-new">
+          <div class="card-head">
+            <div class="card-emoji">🎧</div>
+            <div class="card-title">沉浸式伴游：靠近景点自动推送讲解+语音</div>
+            <span class="card-tag tag-new">内容可运营</span>
+          </div>
+          <div class="card-body">
+            距景点50米自动弹卡：<span class="hl">名称/故事/最佳观景点/今日实况</span>，一键播放专业语音讲解。<br/>
+            让“讲解器/私导体验”在小程序内<span class="gain">零门槛普惠</span>。
+            <div class="uplift">
+              <div class="uplift-label">体验提升（示例）</div>
+              <div class="uplift-metrics">
+                <div class="metric"><span class="metric-val">2×</span><span class="metric-unit">游览深度</span></div>
+                <div class="metric"><span class="metric-val">+40%</span><span class="metric-unit">停留时长（目标）</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Demo GIF (placed to the right of Scene 05) -->
+        <div class="demo-col">
+          <div class="demo-card">
+            <div class="demo-head">
+              <div class="t">动图演示</div>
+              <div class="d">场景05：沉浸式伴游（近场讲解/语音）</div>
+            </div>
+            <div class="demo-body">
+              <img class="demo-gif" src="assets/沉浸式伴游演示.gif" alt="沉浸式伴游动图演示" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 06 -->
+      <div class="scene">
+        <div class="card card-old">
+          <div class="card-head">
+            <div class="card-emoji">🤳</div>
+            <div class="card-title">打卡困难：人从众，拍不到满意照片</div>
+            <span class="card-tag tag-old">传统模式</span>
+          </div>
+          <div class="card-body">
+            热门点拥挤导致体验差、传播素材差，游客“来都来了但不想发”。
+          </div>
+        </div>
+        <div class="vs-col">
+          <div class="vs-line"></div>
+          <div class="vs-badge b2">06</div>
+          <div class="vs-line"></div>
+        </div>
+        <div class="card card-new">
+          <div class="card-head">
+            <div class="card-emoji">📍</div>
+            <div class="card-title">AI机位推荐 + 错峰引导：拥挤度可视化与分流</div>
+            <span class="card-tag tag-new">人流数据</span>
+          </div>
+          <div class="card-body">
+            结合人流指数：<span class="hl">“当前拥挤(8/10)，建议14:30后前往；附近冷门机位推荐……”</span><br/>
+            实现<span class="gain">分流</span>与<span class="gain">满意度提升</span>双赢。
+            <div class="uplift">
+              <div class="uplift-label">数据要求（节选）</div>
+              <div class="uplift-metrics">
+                <div class="metric"><span class="metric-val">0–10</span><span class="metric-unit">拥挤度</span></div>
+                <div class="metric"><span class="metric-val">POI</span><span class="metric-unit">热力/阈值</span></div>
+                <div class="metric"><span class="metric-val">+80%</span><span class="metric-unit">满意度（目标）</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image (placed to the right of Scene 06) -->
+        <div class="demo-col">
+          <div class="demo-card">
+            <div class="demo-head">
+              <div class="t">界面示意</div>
+              <div class="d">场景06：AI机位推荐/景点打卡</div>
+            </div>
+            <div class="demo-body">
+              <img class="demo-gif" src="assets/AI机位推荐.gif" alt="AI机位推荐动图演示" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 07 -->
+      <div class="scene">
+        <div class="card card-old">
+          <div class="card-head">
+            <div class="card-emoji">🚌</div>
+            <div class="card-title">穿梭车盲等：不知道几分钟到、满座坐不上</div>
+            <span class="card-tag tag-old">传统模式</span>
+          </div>
+          <div class="card-body">
+            纸质时刻表 → 站点难找 → 暴晒/暴雨下干等；调度端也难以实时掌握客流，产生空跑与拥堵。
+          </div>
+        </div>
+        <div class="vs-col">
+          <div class="vs-line"></div>
+          <div class="vs-badge b2">07</div>
+          <div class="vs-line"></div>
+        </div>
+        <div class="card card-new">
+          <div class="card-head">
+            <div class="card-emoji">🚐</div>
+            <div class="card-title">智能穿梭：实时到站+空座预报（可逐步）</div>
+            <span class="card-tag tag-new">接驳对接</span>
+          </div>
+          <div class="card-body">
+            C端：<span class="hl">“最近站点200米，下一班3分钟到，空座12”</span>。<br/>
+            B端：基于热力预测给出调度建议（先看板提示也可）。
+            <div class="uplift">
+              <div class="uplift-label">经营提升（示例口径）</div>
+              <div class="uplift-metrics">
+                <div class="metric"><span class="metric-val">-70%</span><span class="metric-unit">等车焦虑</span></div>
+                <div class="metric"><span class="metric-val">-40%</span><span class="metric-unit">空座率（目标）</span></div>
+                <div class="metric"><span class="metric-val">+35%</span><span class="metric-unit">运力利用（目标）</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image (placed to the right of Scene 07) -->
+        <div class="demo-col">
+          <div class="demo-card">
+            <div class="demo-head">
+              <div class="t">界面示意</div>
+              <div class="d">场景07：穿梭车（实时到站/空座预报）</div>
+            </div>
+            <div class="demo-body">
+              <img class="demo-gif" src="assets/穿梭车.png" alt="穿梭车界面示意" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 08 -->
+      <div class="scene compact">
+        <div class="card card-old">
+          <div class="card-head">
+            <div class="card-emoji">🚻</div>
+            <div class="card-title">找厕所崩溃：找5–10分钟，旺季还要排队</div>
+            <span class="card-tag tag-old">传统模式</span>
+          </div>
+          <div class="card-body">
+            指示牌被遮挡、工作人员难找、排队信息未知——带娃家庭体验崩盘。
+          </div>
+        </div>
+        <div class="vs-col">
+          <div class="vs-line"></div>
+          <div class="vs-badge b2">08</div>
+          <div class="vs-line"></div>
+        </div>
+        <div class="card card-new">
+          <div class="card-head">
+            <div class="card-emoji">🧭</div>
+            <div class="card-title">秒级定位：不仅告诉你在哪，还告诉“哪一个最优”</div>
+            <span class="card-tag tag-new">设施数据</span>
+          </div>
+          <div class="card-body">
+            说“找厕所” → 3秒返回：<span class="hl">距离/排队预估/母婴室/无障碍/是否有纸</span>（按数据能力逐步开）。<br/>
+            这是<span class="gain">口碑裂变</span>型刚需功能。
+            <div class="uplift">
+              <div class="uplift-label">交付与数据（节选）</div>
+              <div class="uplift-metrics">
+                <div class="metric"><span class="metric-val">10×</span><span class="metric-unit">查找效率</span></div>
+                <div class="metric"><span class="metric-val">POI</span><span class="metric-unit">设施点位</span></div>
+                <div class="metric"><span class="metric-val">队列</span><span class="metric-unit">排队估算（可选）</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image (placed to the right of Scene 08) -->
+        <div class="demo-col">
+          <div class="demo-card">
+            <div class="demo-head">
+              <div class="t">界面示意</div>
+              <div class="d">场景08：找厕所（设施定位/去导航）</div>
+            </div>
+            <div class="demo-body">
+              <img class="demo-gif" src="assets/找厕所.png" alt="找厕所界面示意" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 09 -->
+      <div class="scene">
+        <div class="card card-old">
+          <div class="card-head">
+            <div class="card-emoji">🍜</div>
+            <div class="card-title">景区吃饭：贵且踩雷，游客不敢消费</div>
+            <span class="card-tag tag-old">传统模式</span>
+          </div>
+          <div class="card-body">
+            “景区餐饮=又贵又难吃”成为固有认知，游客宁愿饿着也不消费，二销空间被锁死。
+          </div>
+        </div>
+        <div class="vs-col">
+          <div class="vs-line"></div>
+          <div class="vs-badge b2">09</div>
+          <div class="vs-line"></div>
+        </div>
+        <div class="card card-new">
+          <div class="card-head">
+            <div class="card-emoji">🍲</div>
+            <div class="card-title">精准餐饮推荐 + 官方特惠：把“想吃”变“敢买”</div>
+            <span class="card-tag tag-new">二销承接</span>
+          </div>
+          <div class="card-body">
+            结合步行时长+饭点触发推荐：<span class="hl">官方认证餐饮</span> + <span class="hl">智能体专属套餐</span> + <span class="hl">提前下单免排队</span>。<br/>
+            打破心理壁垒，形成<span class="gain">场景化二销</span>。
+            <div class="uplift">
+              <div class="uplift-label">增长口径（示例）</div>
+              <div class="uplift-metrics">
+                <div class="metric"><span class="metric-val">+120%</span><span class="metric-unit">餐饮消费（目标）</span></div>
+                <div class="metric"><span class="metric-val">券</span><span class="metric-unit">套餐/折扣</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 10 -->
+      <div class="scene compact">
+        <div class="card card-old">
+          <div class="card-head">
+            <div class="card-emoji">⛈️</div>
+            <div class="card-title">突发靠运气：被动等广播，投诉外溢</div>
+            <span class="card-tag tag-old">传统模式</span>
+          </div>
+          <div class="card-body">
+            暴雨/项目关闭/走散等突发事件依赖人工广播与现场解释，易产生安全隐患与外部投诉扩散。
+          </div>
+        </div>
+        <div class="vs-col">
+          <div class="vs-line"></div>
+          <div class="vs-badge b2">10</div>
+          <div class="vs-line"></div>
+        </div>
+        <div class="card card-new">
+          <div class="card-head">
+            <div class="card-emoji">🛡️</div>
+            <div class="card-title">AI预判 + 主动干预 + 投诉内化：把风险与舆情前置</div>
+            <span class="card-tag tag-new">安全&运营</span>
+          </div>
+          <div class="card-body">
+            天气预警：提前推送“最近避雨点”；项目关闭：路线自动绕行（用户无感切换）；<br/>
+            舆情前置：识别对话中的负面情绪关键词，生成预警给工作人员，投诉尽量留在体系内。
+            <div class="uplift">
+              <div class="uplift-label">预期效果（示例）</div>
+              <div class="uplift-metrics">
+                <div class="metric"><span class="metric-val">30min</span><span class="metric-unit">提前量</span></div>
+                <div class="metric"><span class="metric-val">-60%</span><span class="metric-unit">外部投诉（目标）</span></div>
+                <div class="metric"><span class="metric-val">秒级</span><span class="metric-unit">路线修正</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image (placed to the right of Scene 10) -->
+        <div class="demo-col">
+          <div class="demo-card">
+            <div class="demo-head">
+              <div class="t">界面示意</div>
+              <div class="d">场景10：突发事件（避雨点/公告）</div>
+            </div>
+            <div class="demo-body">
+              <img class="demo-gif" src="assets/突发靠运气.png" alt="突发靠运气界面示意" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PHASE 3 -->
+    <section class="phase">
+      <div class="phase-header">
+        <div class="phase-icon p3">3</div>
+        <div class="phase-info">
+          <h2>PHASE 3 · 行后留存（把“出园即断联”变为传播与复购）</h2>
+          <div class="desc">离开景区后：社交传播 → 跨景区联动 → 全域复购</div>
+        </div>
+      </div>
+
+      <!-- Scene 11 -->
+      <div class="scene">
+        <div class="card card-old">
+          <div class="card-head">
+            <div class="card-emoji">👋</div>
+            <div class="card-title">出园即断联：素材整理1小时，景区零复联</div>
+            <span class="card-tag tag-old">传统模式</span>
+          </div>
+          <div class="card-body">
+            游玩结束→关掉App→自己修图剪视频→朋友圈发完就结束。景区无法沉淀用户关系与口碑传播。
+          </div>
+        </div>
+        <div class="vs-col">
+          <div class="vs-line"></div>
+          <div class="vs-badge b3">11</div>
+          <div class="vs-line"></div>
+        </div>
+        <div class="card card-new">
+          <div class="card-head">
+            <div class="card-emoji">🎬</div>
+            <div class="card-title">AI旅拍一键出片：把游客变“野生代言人”（可选增强）</div>
+            <span class="card-tag tag-new">留存传播</span>
+          </div>
+          <div class="card-body">
+            基于游览轨迹与素材自动生成Vlog/相册（可叠加官方水印与二次推荐）。<br/>
+            让传播从“少数会剪辑的人”变为“人人可发”，拉动自然增长。
+            <div class="uplift">
+              <div class="uplift-label">传播提升（示例）</div>
+              <div class="uplift-metrics">
+                <div class="metric"><span class="metric-val">+200%</span><span class="metric-unit">社交传播量（目标）</span></div>
+                <div class="metric"><span class="metric-val">0</span><span class="metric-unit">创作门槛</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 12 -->
+      <div class="scene">
+        <div class="card card-old">
+          <div class="card-head">
+            <div class="card-emoji">🗺️</div>
+            <div class="card-title">行程断裂：每换一个景区就要重新搜、重新做攻略</div>
+            <span class="card-tag tag-old">传统模式</span>
+          </div>
+          <div class="card-body">
+            单景区体验与下一站完全割裂，用户画像无法继承，跨景区复购与联动难做。
+          </div>
+        </div>
+        <div class="vs-col">
+          <div class="vs-line"></div>
+          <div class="vs-badge b3">12</div>
+          <div class="vs-line"></div>
+        </div>
+        <div class="card card-new">
+          <div class="card-head">
+            <div class="card-emoji">🌐</div>
+            <div class="card-title">矩阵联动：带着用户画像无缝衔接（小七孔→黄果树→西江…）</div>
+            <span class="card-tag tag-new">全域复购</span>
+          </div>
+          <div class="card-body">
+            游玩结束后智能体主动推荐下一站：<span class="hl">基于亲子/预算/偏好</span>匹配景区与酒店/交通。<br/>
+            从“单景区消费”升级为“贵州全域游”，形成更高的用户终身价值。
+            <div class="uplift">
+              <div class="uplift-label">复购提升（示例）</div>
+              <div class="uplift-metrics">
+                <div class="metric"><span class="metric-val">+25%</span><span class="metric-unit">跨景区复购（目标）</span></div>
+                <div class="metric"><span class="metric-val">3×</span><span class="metric-unit">人均天数（目标）</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PHASE 4: Integration scope -->
+    <section class="phase">
+      <div class="phase-header">
+        <div class="phase-icon p4">⟂</div>
+        <div class="phase-info">
+          <h2>动态数据获取范围</h2>
+          <div class="desc">明确可获取的数据主题与现场动态能力，用于支撑问答、导览、推送与运营看板</div>
+        </div>
+      </div>
+
+      <!-- 模块一：动态数据获取范围 -->
+      <div class="scene">
+        <div class="card card-old">
+          <div class="card-head">
+            <div class="card-emoji">🧩</div>
+            <div class="card-title">数据孤岛：信息静态、问答只能“讲道理”</div>
+            <span class="card-tag tag-old">未对接</span>
+          </div>
+          <div class="card-body">
+            无停车/闸机/人流/接驳等动态数据时，问答与导览无法做到“实时”，只能给通用说明，体验与管理价值受限。
+          </div>
+        </div>
+        <div class="vs-col">
+          <div class="vs-line"></div>
+          <div class="vs-badge b4">A</div>
+          <div class="vs-line"></div>
+        </div>
+        <div class="card card-new">
+          <div class="card-head">
+            <div class="card-emoji">🔗</div>
+            <div class="card-title">动态数据获取范围：让“问答/推送/看板”可实时运转</div>
+            <span class="card-tag tag-new">数据清单</span>
+          </div>
+          <div class="card-body">
+            <span class="k">动态数据对接：</span>以“票务信息、订单信息、营销活动数据、分销/渠道数据、演艺活动管理、游玩项目管理、园内交通信息、公告”等主题为主，分批开放、统一口径接入，为问答、导览、推送与运营看板提供基础数据支撑。<br/>
+            <span class="k">现场动态（用于实时能力）：</span>停车、闸机、客流热力、天气预警等，用于实时问答、错峰分流与安全提醒。
+            <div class="uplift">
+              <div class="uplift-label">联调与验收建议（节选）</div>
+              <div class="uplift-metrics">
+                <div class="metric"><span class="metric-val">字段</span><span class="metric-unit">口径一致</span></div>
+                <div class="metric"><span class="metric-val">频率</span><span class="metric-unit">更新≤X分钟</span></div>
+                <div class="metric"><span class="metric-val">SLA</span><span class="metric-unit">成功率/耗时</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 模块二：票务交易对接方式 -->
+      <div class="phase-header" style="margin-top:22px;">
+        <div class="phase-icon p4">⟂</div>
+        <div class="phase-info">
+          <h2>票务交易对接方式</h2>
+          <div class="desc">两种方式：H5嵌入（快上线/兜底）与接口对接（长期主方案）</div>
+        </div>
+      </div>
+
+      <div class="scene">
+        <div class="card card-old">
+          <div class="card-head">
+            <div class="card-emoji">🧾</div>
+            <div class="card-title">对接方式①：H5嵌入（上线快，但可控性与沉淀受限）</div>
+            <span class="card-tag tag-old">方案A</span>
+          </div>
+          <div class="card-body">
+            <span class="k">结论：</span>适合“一期快上线/兜底”，不适合作为长期主方案。<br/>
+            <span class="k">优点：</span>上线快、改造少；可作为接口方案的备选通道。<br/>
+            <span class="k">不足：</span>体验与数据沉淀受限；营销/渠道策略定制空间小，后续迁移成本较高。
+          </div>
+        </div>
+        <div class="vs-col">
+          <div class="vs-line"></div>
+          <div class="vs-badge b4">B</div>
+          <div class="vs-line"></div>
+        </div>
+        <div class="card card-new">
+          <div class="card-head">
+            <div class="card-emoji">🛒</div>
+            <div class="card-title">对接方式②：接口对接</div>
+            <span class="card-tag tag-new">方案B（推荐）</span>
+          </div>
+          <div class="card-body">
+            <span class="k">推荐理由：</span><br/>
+            <span class="gain">体验统一可控</span>（问答/导览/交易一体）<br/>
+            <span class="gain">自主可迭代</span>（前后端一体交付，需求变更响应快）<br/>
+            <span class="gain">数据可沉淀</span>（用户行为/交易链路/运营效果统一口径）<br/>
+            <span class="gain">全链路可追溯</span>（库存/下单/核销/退改/对账口径一致）<br/>
+            <span class="k">对接范围（概括）：</span>商品/库存/订单/核销/售后/对账。
+            <div class="uplift">
+              <div class="uplift-label">关键原则（必须项）</div>
+              <div class="uplift-metrics">
+                <div class="metric"><span class="metric-val">支付</span><span class="metric-unit">在我方小程序</span></div>
+                <div class="metric"><span class="metric-val">用户</span><span class="metric-unit">UnionId映射</span></div>
+                <div class="metric"><span class="metric-val">对账</span><span class="metric-unit">全链路可追溯</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUMMARY -->
+    <section class="summary">
+      <div class="summary-head">
+        <h2>双轮驱动：用户体验爽感 × 景区经营增长</h2>
+        <p>把“服务”做成刚需，把“交易”做成顺手，把“数据”做成运营能力</p>
+      </div>
+      <div class="summary-body">
+        <div class="summary-col user">
+          <h3>用户体验革命（从…到…）</h3>
+          <div class="s-item"><span class="s-dot blue"></span>从<b>“五App拼攻略”</b>到<b>“一个对话框3分钟搞定”</b></div>
+          <div class="s-item"><span class="s-dot blue"></span>从<b>“到了景区关掉工具”</b>到<b>“全程不离手AI伴游”</b></div>
+          <div class="s-item"><span class="s-dot blue"></span>从<b>“拍照即走”</b>到<b>“边走边听边懂”</b></div>
+          <div class="s-item"><span class="s-dot blue"></span>从<b>“盲等穿梭车”</b>到<b>“实时到站+空座预报”</b></div>
+          <div class="s-item"><span class="s-dot blue"></span>从<b>“满山找厕所”</b>到<b>“秒级定位+最优选择”</b></div>
+          <div class="s-item"><span class="s-dot blue"></span>从<b>“出园即断联”</b>到<b>“一键出片+跨景区联动”</b></div>
+        </div>
+        <div class="summary-col biz">
+          <h3>经营升级</h3>
+          <div class="s-item"><span class="s-dot teal"></span><b>二销收入提升</b>：场景化推荐承接餐饮/接驳/套餐券</div>
+          <div class="s-item"><span class="s-dot teal"></span><b>降本增效</b>：接驳动态调度、停车分流、减少无效发车</div>
+          <div class="s-item"><span class="s-dot teal"></span><b>投诉内化闭环</b>：情绪识别预警+工单介入，减少外部投诉扩散</div>
+          <div class="s-item"><span class="s-dot teal"></span><b>数据驱动运营</b>：热问、客流、停车、闸机、票务统一看板</div>
+          <div class="s-item"><span class="s-dot teal"></span><b>官方渠道转化</b>：降低对OTA依赖，提升官方直销占比</div>
+          <div class="s-item"><span class="s-dot teal"></span><b>能力可沉淀</b>：小程序由我方交付，体验统一、可持续迭代</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCALE -->
+    <section class="scale">
+      <h2>规模化路径：从小七孔试点到全域可复制</h2>
+      <div class="scale-flow">
+        <div class="scale-node sn-1">小七孔试点<br/><span class="scale-sub">跑通数据+票务全链路</span></div>
+        <div class="scale-arrow">→</div>
+        <div class="scale-node sn-2">黄小西矩阵联动<br/><span class="scale-sub">黄果树/西江等</span></div>
+        <div class="scale-arrow">→</div>
+        <div class="scale-node sn-3">省内多景区复制<br/><span class="scale-sub">4A+景区</span></div>
+        <div class="scale-arrow">→</div>
+        <div class="scale-node sn-4">全国输出<br/><span class="scale-sub">ISV生态</span></div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // 为有右侧媒体（图片/动图）的场景添加“查看/收起”圆形按钮，并默认收起
+    document.addEventListener('DOMContentLoaded', () => {
+      const scenes = document.querySelectorAll('.scene');
+      scenes.forEach(scene => {
+        const demoCol = scene.querySelector(':scope > .demo-col');
+        if (!demoCol) return;
+
+        scene.classList.add('has-media');
+
+        const midCard = scene.querySelector('.card.card-new');
+        if (!midCard) return;
+
+        if (midCard.querySelector('.media-toggle')) return;
+
+        const ICON_EYE_OPEN = `
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M2.2 12s3.6-7 9.8-7 9.8 7 9.8 7-3.6 7-9.8 7S2.2 12 2.2 12Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        `;
+        const ICON_EYE_CLOSED = `
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M3 12s3.6-7 9-7c2.1 0 4 .7 5.6 1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M21 12s-3.6 7-9 7c-2.1 0-4-.7-5.6-1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M4 4l16 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        `;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'media-toggle';
+        btn.innerHTML = ICON_EYE_OPEN;
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', '查看');
+
+        const setState = (open) => {
+          scene.classList.toggle('is-open', open);
+          btn.innerHTML = open ? ICON_EYE_CLOSED : ICON_EYE_OPEN;
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          btn.setAttribute('aria-label', open ? '收起' : '查看');
+          demoCol.setAttribute('aria-hidden', open ? 'false' : 'true');
+        };
+
+        btn.addEventListener('click', () => setState(!scene.classList.contains('is-open')));
+        midCard.appendChild(btn);
+        // 默认展开右侧图片/动图
+        setState(true);
+      });
+    });
+  </script>
+</body>
+</html>
